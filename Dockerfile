@@ -4,7 +4,7 @@ FROM golang:1.19.4-alpine3.17 AS build
 WORKDIR /build
 
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
