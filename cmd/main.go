@@ -3,29 +3,27 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/eliassebastian/r6index-auth/internal/rabbitmq"
-	"github.com/eliassebastian/r6index-auth/internal/ubisoft"
+	"github.com/cloudwego/hertz/pkg/app/client"
+	"github.com/cloudwego/hertz/pkg/app/client/retry"
+	"github.com/cloudwego/hertz/pkg/network/standard"
+	"github.com/cloudwego/hertz/pkg/protocol"
+	"github.com/eliassebastian/r6index-auth/pkg/rabbitmq"
+	"github.com/eliassebastian/r6index-auth/pkg/ubisoft"
 	"github.com/go-co-op/gocron"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	log.Println("::::::::: PRE R6 INDEX AUTH STARTING")
-	var env string
-
-	flag.StringVar(&env, "env", "", "Environment Variables filename")
-	flag.Parse()
-
-	err := godotenv.Load(env)
+	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("Error loading .env file", err)
 	}
 
 	errC, err := run()
@@ -43,16 +41,38 @@ func main() {
 type serverConfig struct {
 	rabbitmq  *rabbitmq.RabbitMQConfig
 	scheduler *gocron.Scheduler
-	ubisoft   *ubisoft.UbisoftConfig
+	ubisoft   *ubisoft.UbisoftRepository
 	doneC     chan struct{}
 }
 
 func run() (<-chan error, error) {
+
+	//http client
+	c, err := client.NewClient(
+		client.WithResponseBodyStream(true),
+		client.WithDialTimeout(1*time.Second),
+		client.WithDialer(standard.NewDialer()),
+		client.WithRetryConfig(
+			retry.WithInitDelay(1*time.Second),
+			retry.WithMaxAttemptTimes(5),
+			retry.WithDelayPolicy(retry.BackOffDelayPolicy),
+		),
+	)
+
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	c.SetRetryIfFunc(func(req *protocol.Request, resp *protocol.Response, err error) bool {
+		return resp.StatusCode() != 200 || err != nil
+	})
+
 	//fetch initial ubisoft auth details
-	ubi := ubisoft.NewUbisoftConnection()
+	ubi := ubisoft.New(c)
 
 	//start rabbitmq connection as producer
-	rq, err := rabbitmq.NewConnection()
+	rq, err := rabbitmq.New()
 	if err != nil {
 		return nil, err
 	}
@@ -77,10 +97,10 @@ func run() (<-chan error, error) {
 		defer func() {
 			err := rq.Close()
 			if err != nil {
-				log.Println("Failed to close Kafka Connection")
+				log.Println("Failed to close RabbitMQ Connection")
 			}
 
-			ubi.Stop()
+			ubi.Close()
 			s.Stop()
 
 			stop()
@@ -109,10 +129,11 @@ func (s *serverConfig) listenAndServe() error {
 	//TODO initiate cron job every 2hr45min
 	//s.scheduler.Every("2h45m").Do()
 	job, err := s.scheduler.Every("10m").Do(func(con *rabbitmq.RabbitMQConfig) {
-		err := s.ubisoft.Connect(context.Background(), con)
+		err := s.ubisoft.Send(context.Background(), con)
 		if err != nil {
 			log.Println("Job Error", err)
 		}
+
 		log.Println("SUCCESS UBI")
 	}, s.rabbitmq)
 
