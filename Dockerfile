@@ -17,9 +17,4 @@ WORKDIR /app
 COPY --from=build /build/r6index_auth .
 COPY --from=build /build/.env .
 
-# # Copy and enable your CRON task
-# COPY ./cron.txt /app/cron.txt
-# RUN /usr/bin/crontab /app/cron.txt
-
-# RUN touch /tmp/out.log
-CMD [ "r6index_auth" "-env" "/app/.env" ]
+CMD [ "./r6index_auth" ]
