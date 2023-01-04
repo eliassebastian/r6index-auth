@@ -21,7 +21,7 @@ func basicToken() string {
 
 	bs := []byte(fmt.Sprintf("%s:%s", username, pw))
 
-	return fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(bs))
+	return base64.StdEncoding.EncodeToString(bs)
 }
 
 type UbisoftRepository struct {
@@ -69,6 +69,7 @@ func (u *UbisoftRepository) connect(ctx context.Context, new string) (*response,
 	req.SetMethod(consts.MethodPost)
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.SetContentTypeBytes([]byte("application/json"))
+	req.Header.Add("Accept", "*/*")
 	req.SetRequestURI(UBISOFT_URL)
 	req.SetAuthSchemeToken(authScheme, authValue)
 	req.Header.Add("Ubi-AppId", appId)
