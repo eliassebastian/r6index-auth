@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -92,13 +91,12 @@ func (u *UbisoftRepository) connect(ctx context.Context, new string) (*response,
 }
 
 type packet struct {
-	ticket     string
-	sessionId  string
-	expiration string
-	//ubisoft ranked 2.0 header values
-	ticketNew     string
-	sessionIdNew  string
-	expirationNew string
+	Ticket        string `json:"ticket"`
+	SessionId     string `json:"sessionId"`
+	Expiration    string `json:"expiration"`
+	TicketNew     string `json:"ticketNew"`
+	SessionIdNew  string `json:"sessionIdNew"`
+	ExpirationNew string `json:"expirationNew"`
 }
 
 func (u *UbisoftRepository) Send(ctx context.Context, rq *rabbitmq.RabbitMQConfig) error {
@@ -119,16 +117,16 @@ func (u *UbisoftRepository) Send(ctx context.Context, rq *rabbitmq.RabbitMQConfi
 	}
 
 	packet := packet{
-		ticket:        fr.Ticket,
-		sessionId:     fr.SessionId,
-		expiration:    fr.Expiration,
-		ticketNew:     sr.Ticket,
-		sessionIdNew:  sr.SessionId,
-		expirationNew: sr.Expiration,
+		Ticket:        fr.Ticket,
+		SessionId:     fr.SessionId,
+		Expiration:    fr.Expiration,
+		TicketNew:     sr.Ticket,
+		SessionIdNew:  sr.SessionId,
+		ExpirationNew: sr.Expiration,
 	}
 
 	var network bytes.Buffer
-	e := gob.NewEncoder(&network)
+	e := json.NewEncoder(&network)
 	err = e.Encode(packet)
 	if err != nil {
 		return err
