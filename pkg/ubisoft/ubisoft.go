@@ -64,6 +64,7 @@ func (u *UbisoftRepository) connect(ctx context.Context, new string) (*response,
 
 	req := protocol.AcquireRequest()
 	res := protocol.AcquireResponse()
+	defer protocol.ReleaseRequest(req)
 	defer protocol.ReleaseResponse(res)
 
 	req.SetMethod(consts.MethodPost)
