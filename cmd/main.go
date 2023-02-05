@@ -13,18 +13,14 @@ import (
 	"github.com/cloudwego/hertz/pkg/app/client/retry"
 	"github.com/cloudwego/hertz/pkg/network/standard"
 	"github.com/cloudwego/hertz/pkg/protocol"
+	"github.com/eliassebastian/r6index-auth/pkg/config"
 	"github.com/eliassebastian/r6index-auth/pkg/rabbitmq"
 	"github.com/eliassebastian/r6index-auth/pkg/ubisoft"
 	"github.com/go-co-op/gocron"
-	"github.com/joho/godotenv"
 )
 
 func main() {
 	log.Println("::::::::: PRE R6 INDEX AUTH STARTING")
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file", err)
-	}
 
 	errC, err := run()
 	if err != nil {
@@ -34,8 +30,6 @@ func main() {
 	if err := <-errC; err != nil {
 		log.Fatalf("Error while running: %s", err)
 	}
-
-	log.Println(os.Getenv("UBISOFT_URL"))
 }
 
 type serverConfig struct {
@@ -46,8 +40,6 @@ type serverConfig struct {
 }
 
 func run() (<-chan error, error) {
-
-	//http client
 	c, err := client.NewClient(
 		client.WithResponseBodyStream(true),
 		client.WithDialTimeout(1*time.Second),
@@ -95,11 +87,7 @@ func run() (<-chan error, error) {
 		ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
 		defer func() {
-			err := rq.Close()
-			if err != nil {
-				log.Println("Failed to close RabbitMQ Connection")
-			}
-
+			rq.Close()
 			ubi.Close()
 			s.Stop()
 
@@ -116,7 +104,7 @@ func run() (<-chan error, error) {
 	}()
 
 	go func() {
-		if err := srv.listenAndServe(); err != nil {
+		if err := srv.listenAndServe(ctx); err != nil {
 			errC <- err
 		}
 	}()
@@ -124,12 +112,14 @@ func run() (<-chan error, error) {
 	return errC, nil
 }
 
-func (s *serverConfig) listenAndServe() error {
+func (s *serverConfig) listenAndServe(ctx context.Context) error {
 	log.Println(":::::: ListenAndServer")
+	refresh := config.GetEnv("UBISOFT_SESSIONREFRESH", "1h")
+
 	//TODO initiate cron job every 2hr45min
 	//s.scheduler.Every("2h45m").Do()
-	job, err := s.scheduler.Every("10m").Do(func(con *rabbitmq.RabbitMQConfig) {
-		err := s.ubisoft.Send(context.Background(), con)
+	job, err := s.scheduler.Every(refresh).Do(func(con *rabbitmq.RabbitMQConfig) {
+		err := s.ubisoft.Send(ctx, con)
 		if err != nil {
 			log.Println("Job Error", err)
 		}

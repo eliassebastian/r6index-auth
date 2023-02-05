@@ -6,18 +6,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/cloudwego/hertz/pkg/app/client"
 	"github.com/cloudwego/hertz/pkg/protocol"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"github.com/eliassebastian/r6index-auth/pkg/config"
 	"github.com/eliassebastian/r6index-auth/pkg/rabbitmq"
 )
 
 // basic auth header for ubisoft session api rpc
 func basicToken() string {
-	username := os.Getenv("UBISOFT_USERNAME")
-	pw := os.Getenv("UBISOFT_PASS")
+	username := config.GetEnv("UBISOFT_USERNAME", "")
+	pw := config.GetEnv("UBISOFT_PASS", "")
 
 	bs := []byte(fmt.Sprintf("%s:%s", username, pw))
 

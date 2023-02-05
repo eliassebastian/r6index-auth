@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
-	"os"
 
+	"github.com/eliassebastian/r6index-auth/pkg/config"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -16,8 +16,7 @@ type RabbitMQConfig struct {
 }
 
 func New() (*RabbitMQConfig, error) {
-	url := os.Getenv("RABBITMQ_URL")
-
+	url := config.GetEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
 	conn, err := amqp.Dial(url)
 	if err != nil {
 		return nil, errors.New("error starting new rabbitmq connection")
