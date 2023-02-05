@@ -15,6 +15,6 @@ FROM alpine
 
 WORKDIR /app
 COPY --from=build /build/r6index_auth .
-COPY --from=build /build/.env .
+# COPY --from=build /build/.env .
 
 CMD [ "./r6index_auth" ]
