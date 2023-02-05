@@ -12,7 +12,7 @@ import (
 type RabbitMQConfig struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
-	//queue      *amqp.Queue
+	queue      *amqp.Queue
 }
 
 func New() (*RabbitMQConfig, error) {
@@ -40,9 +40,35 @@ func New() (*RabbitMQConfig, error) {
 		return nil, err
 	}
 
+	q, err := ch.QueueDeclare(
+		"auth",                        // name
+		true,                          // durable
+		false,                         // delete when unused
+		false,                         // exclusive
+		false,                         // no-wait
+		amqp.Table{"x-max-length": 1}, // arguments
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = ch.QueueBind(
+		q.Name,    // queue name
+		"",        // routing key
+		"r6index", // exchange
+		false,
+		nil,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &RabbitMQConfig{
 		connection: conn,
 		channel:    ch,
+		queue:      &q,
 	}, nil
 }
 
@@ -70,6 +96,7 @@ func (p *RabbitMQConfig) Produce(ctx context.Context, b *[]byte) error {
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        *b,
+			//DeliveryMode: 2,
 		})
 
 	return err
