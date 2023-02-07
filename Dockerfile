@@ -8,13 +8,14 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN CGO_ENABLED=1 GOOS=linux go build -o r6index_auth ./cmd
+RUN CGO_ENABLED=1 go build -o r6index_auth ./cmd
 
 #-
 FROM alpine
 
 WORKDIR /app
 COPY --from=build /build/r6index_auth .
-# COPY --from=build /build/.env .
 
 CMD [ "./r6index_auth" ]
+
+#docker buildx build --push --platform=linux/amd64,linux/arm64 --tag eliassebastian/r6index-auth:0.5.1 .
