@@ -1,6 +1,6 @@
 module github.com/eliassebastian/r6index-auth
 
-go 1.19
+go 1.20
 
 require (
 	github.com/cloudwego/hertz v0.5.2
